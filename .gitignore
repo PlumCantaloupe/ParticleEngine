@@ -5,7 +5,6 @@ ipch
 *.xcworkspace/
 *.opensdf
 *.xcscheme
-*.plist
 
 # Compiled source #
 ###################
