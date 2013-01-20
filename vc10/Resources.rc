@@ -1,0 +1,6 @@
+#include "..\include\Resources.h"
+
+RES_GLOW_RED_TEX
+RES_GLOW_BLUE_TEX
+
+
