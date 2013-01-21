@@ -43,12 +43,13 @@ class ParticleEngineApp : public AppBasic
 
 void ParticleEngineApp::prepareSettings(Settings *settings)
 {
-    settings->setFrameRate(60);
+    settings->setFrameRate(120);
     settings->setWindowSize(1024, 768);
 }
 
 void ParticleEngineApp::setup()
 {
+	gl::disableVerticalSync();
 	glEnable(GL_TEXTURE_2D);
 
 	CameraPersp initialCam;

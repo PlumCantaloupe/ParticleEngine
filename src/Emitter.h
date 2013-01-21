@@ -126,14 +126,14 @@ public:
         mMaxParticles = mFormat.particlesPerSecond * mFormat.particleLifespanSeconds + 2000;
         mCurrNumParticles = 0;
         
-        //now start update thread
-        THREAD_UPDATE_INTERVAL_MILLISECONDS = (int)((1.0f/getFrameRate()) * 1000.0f);
-        boost::thread mUpdateThread( boost::bind( &Emitter::update, this ) );
-        mIsThreadDead = false;
-        
-        mPerlin = Perlin(3);
+		mPerlin = Perlin(3);
         mPerlin.setSeed(getElapsedFrames() * randInt(1000));
         mCounter = 0.0f;
+
+        //now start update thread
+        THREAD_UPDATE_INTERVAL_MILLISECONDS = (int)((1.0f/30.0) * 1000.0f);
+        boost::thread mUpdateThread( boost::bind( &Emitter::update, this ) );
+        mIsThreadDead = false;
     }
     
     void setPosition( const Vec3f &newPos )
@@ -232,8 +232,8 @@ public:
                 }
             }
             mCurrTime = getElapsedSeconds();
-            
-            boost::this_thread::sleep(boost::posix_time::milliseconds(THREAD_UPDATE_INTERVAL_MILLISECONDS));
+
+			boost::this_thread::sleep(boost::posix_time::milliseconds(THREAD_UPDATE_INTERVAL_MILLISECONDS));
         }
     }
     
