@@ -20,7 +20,6 @@ class ParticleEngineApp : public AppBasic
     Emitter<Particle> mParticles1;
 	Emitter<Particle> mParticles2;
 	Emitter<Particle> mParticles3;
-    Emitter<Particle> mParticles4;
     
     //debug
     params::InterfaceGl mParams;

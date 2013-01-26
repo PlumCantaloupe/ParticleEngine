@@ -16,7 +16,7 @@
 #include "cinder/Camera.h"
 
 #include <boost/thread.hpp>
-#include <list>
+#include <vector>
 
 #include "Particle.h"
 
@@ -93,21 +93,21 @@ template<typename EMITTER_TEMPLATE>
 class Emitter
 {
 protected:
-    list<EMITTER_TEMPLATE>      mParticles;
-    list<EMITTER_TEMPLATE*>     mPurgParticles;
-    int                         mCurrNumParticles;
-    double                      mCurrTime;
-    double                      mDiffTime;
-    Perlin                      mPerlin;
-    unsigned int                mCounter;
+    vector<EMITTER_TEMPLATE>        mParticlesDrawBuffer, mParticlesMiddleBuffer, mParticlesUpdateBuffer; //using buffers to speed up mutex locks
+    vector<EMITTER_TEMPLATE*>       mPurgParticles;
+    int                             mCurrNumParticles;
+    double                          mCurrTime;
+    double                          mDiffTime;
+    Perlin                          mPerlin;
+    unsigned int                    mCounter;
     
-    boost::thread   mUpdateThread;
-    boost::mutex    mWriteMutex;
-    int             THREAD_UPDATE_INTERVAL_MILLISECONDS;
-    bool            mIsThreadDead;
+    boost::thread                   mUpdateThread;
+    boost::mutex                    mWriteMutex;
+    int                             THREAD_UPDATE_INTERVAL_MILLISECONDS;
+    bool                            mIsThreadDead;
 public:
-	EmitterFormat               mFormat;
-	int                         mMaxParticles;
+	EmitterFormat                   mFormat;
+	int                             mMaxParticles;
     
 public:
     Emitter(){}
@@ -154,7 +154,11 @@ public:
     
     void render(const CameraPersp &cam)
     {
-        for( typename list<EMITTER_TEMPLATE>::iterator p = mParticles.begin(); p != mParticles.end(); ++p ) {
+        mWriteMutex.lock();
+        mParticlesDrawBuffer = mParticlesMiddleBuffer;
+        mWriteMutex.unlock();
+        
+        for( typename vector<EMITTER_TEMPLATE>::iterator p = mParticlesDrawBuffer.begin(); p != mParticlesDrawBuffer.end(); ++p ) {
             if( (!p->mIsDead) && (!p->mIsInPurgatory)) {
                 p->render(&cam, mFormat.particleRenderType);
             }
@@ -170,14 +174,14 @@ public:
             //do nothing
         }
         else if(mFormat.particlePerlinType == EmitterFormat::PERLIN_TYPE_INDIVIDUAL) {
-            for( typename list<EMITTER_TEMPLATE>::iterator p = mParticles.begin(); p != mParticles.end(); ++p ) {
+            for( typename vector<EMITTER_TEMPLATE>::iterator p = mParticlesUpdateBuffer.begin(); p != mParticlesUpdateBuffer.end(); ++p ) {
                 if ((!p->mIsDead) && (!p->mIsInPurgatory)) {
                     p->applyPerlin( mFormat.particleTurbulance );
                 }
             }
         }
         else if(mFormat.particlePerlinType == EmitterFormat::PERLIN_TYPE_SYNCHRONIZED) {
-            for( typename list<EMITTER_TEMPLATE>::iterator p = mParticles.begin(); p != mParticles.end(); ++p ) {
+            for( typename vector<EMITTER_TEMPLATE>::iterator p = mParticlesUpdateBuffer.begin(); p != mParticlesUpdateBuffer.end(); ++p ) {
                 if ((!p->mIsDead) && (!p->mIsInPurgatory)) {
                     Vec3f noiseVector = mPerlin.dfBm( Vec3f(0.0f, 0.0f, (float)mCounter) * mFormat.particleTurbulance ) * mFormat.particleTurbulance * 0.1f;
                     p->applyPerlin( mFormat.particleTurbulance, &noiseVector );
@@ -190,9 +194,9 @@ public:
     
     void repulseParticles()
     {
-        for( typename list<EMITTER_TEMPLATE>::iterator p1 = mParticles.begin(); p1 != mParticles.end(); ++p1 ) {
-            typename list<EMITTER_TEMPLATE>::iterator p2 = p1;
-            for( ++p2; p2 != mParticles.end(); ++p2 ) {
+        for( typename vector<EMITTER_TEMPLATE>::iterator p1 = mParticlesUpdateBuffer.begin(); p1 != mParticlesUpdateBuffer.end(); ++p1 ) {
+            typename vector<EMITTER_TEMPLATE>::iterator p2 = p1;
+            for( ++p2; p2 != mParticlesUpdateBuffer.end(); ++p2 ) {
                 Vec3f dir = p1->mLoc - p2->mLoc;
                 
                 float distSqrd = dir.lengthSquared();
@@ -214,14 +218,13 @@ public:
         
         while(!mIsThreadDead)
         {
-            boost::mutex::scoped_lock lock(mWriteMutex);
-        
             mDiffTime = getElapsedSeconds() - mCurrTime;
+            
             applyPerlin();
 			//repulseParticles(); //soooo slow
             addParticles( mFormat.particlesPerSecond * mDiffTime );
-        
-            for( typename list<EMITTER_TEMPLATE>::iterator p = mParticles.begin(); p != mParticles.end(); ++p ) {
+            
+            for( typename vector<EMITTER_TEMPLATE>::iterator p = mParticlesUpdateBuffer.begin(); p != mParticlesUpdateBuffer.end(); ++p ) {
                 if( p->mIsDead ) {
                     p->mIsDead = false;
                     p->mIsInPurgatory = true;
@@ -231,8 +234,13 @@ public:
                     p->update( mFormat.particleGravity );
                 }
             }
+            
             mCurrTime = getElapsedSeconds();
-
+            
+            mWriteMutex.lock();
+            mParticlesMiddleBuffer = mParticlesUpdateBuffer;
+            mWriteMutex.unlock();
+            
 			boost::this_thread::sleep(boost::posix_time::milliseconds(THREAD_UPDATE_INTERVAL_MILLISECONDS));
         }
     }
@@ -243,7 +251,7 @@ public:
             if( mCurrNumParticles < mMaxParticles ) {
                 EMITTER_TEMPLATE newParticle = EMITTER_TEMPLATE();
                 setupParticle( &newParticle );
-                mParticles.push_back( newParticle );
+                mParticlesUpdateBuffer.push_back( newParticle );
                 mCurrNumParticles++;
             }
             else {
