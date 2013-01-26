@@ -3,7 +3,8 @@
 //  ParticleEngine
 //
 //  Created by Anthony Scavarelli on 2013-01-20.
-//
+//  http://www.anthony-scavarelli.com
+//  http://www.luminartists.ca
 //
 
 #ifndef __FloatingCubes__PARTICLE__

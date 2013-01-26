@@ -1,3 +1,12 @@
+//
+//  Emitter.h
+//  ParticleEngine
+//
+//  Created by Anthony Scavarelli on 2013-01-20.
+//  http://www.anthony-scavarelli.com
+//  http://www.luminartists.ca
+//
+
 #include "cinder/app/AppBasic.h"
 #include "cinder/gl/gl.h"
 #include "cinder/params/Params.h"
