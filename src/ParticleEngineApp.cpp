@@ -51,7 +51,7 @@ class ParticleEngineApp : public AppBasic
 
 void ParticleEngineApp::prepareSettings(Settings *settings)
 {
-    settings->setFrameRate(120);
+    settings->setFrameRate(120.0f);
     settings->setWindowSize(1024, 768);
 }
 
@@ -172,7 +172,7 @@ void ParticleEngineApp::draw()
 
     //debug
     if (mShowParams) {
-		params::InterfaceGl::draw();
+		mParams.draw();
     }
 }
 

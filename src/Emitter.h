@@ -16,9 +16,8 @@
 #include "cinder/Perlin.h"
 #include "cinder/Camera.h"
 
-#include <boost/thread.hpp>
-#include <vector>
-
+#include "cinder/Utilities.h"
+#include "cinder/Thread.h"
 #include "Particle.h"
 
 using namespace ci;
@@ -102,9 +101,9 @@ protected:
     Perlin                          mPerlin;
     unsigned int                    mCounter;
     
-    boost::thread                   mUpdateThread;
-    boost::mutex                    mWriteMutex;
-    int                             THREAD_UPDATE_INTERVAL_MILLISECONDS;
+    thread                          mUpdateThread;
+    mutex                           mWriteMutex;
+    float                           THREAD_UPDATE_INTERVAL_MILLISECONDS;
     bool                            mIsThreadDead;
 public:
 	EmitterFormat                   mFormat;
@@ -115,8 +114,8 @@ public:
     ~Emitter()
     {
         mIsThreadDead = true;
-        mUpdateThread.interrupt();
-        boost::this_thread::sleep(boost::posix_time::milliseconds(1000)); //need to give thread some time to interrupt before moving on ...
+        mUpdateThread.join();
+        ci::sleep(1000.0f); //need to give thread some time to interrupt before moving on ...
     }
     
     void setup( EmitterFormat format = EmitterFormat() )
@@ -132,14 +131,14 @@ public:
         mCounter = 0.0f;
 
         //now start update thread
-        THREAD_UPDATE_INTERVAL_MILLISECONDS = (int)((1.0f/30.0) * 1000.0f);
-        boost::thread mUpdateThread( boost::bind( &Emitter::update, this ) );
+        THREAD_UPDATE_INTERVAL_MILLISECONDS = (1.0f/30.0) * 1000.0f;
+        mUpdateThread = thread( std::bind( &Emitter::update, this ) );
         mIsThreadDead = false;
     }
     
     void setPosition( const Vec3f &newPos )
     {
-		boost::mutex::scoped_lock lock(mWriteMutex, boost::try_to_lock);
+        mWriteMutex.lock();
         mFormat.emitterPosition = newPos;
     }
     
@@ -242,7 +241,7 @@ public:
             mParticlesMiddleBuffer = mParticlesUpdateBuffer;
             mWriteMutex.unlock();
             
-			boost::this_thread::sleep(boost::posix_time::milliseconds(THREAD_UPDATE_INTERVAL_MILLISECONDS));
+            ci::sleep(THREAD_UPDATE_INTERVAL_MILLISECONDS);
         }
     }
     
